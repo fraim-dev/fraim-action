@@ -1,0 +1,44 @@
+# Example GitHub Actions workflow for Fraim Security Scan
+# Copy this file to .github/workflows/security.yml in your repository
+
+name: Security Scan with Fraim
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main, master]
+  schedule:
+    # Run weekly full scan on Sundays at 2 AM UTC
+    - cron: '0 2 * * 0'
+
+jobs:
+  security-scan:
+    name: Fraim Security Analysis
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
+      security-events: write  # Required for uploading SARIF
+      pull-requests: write    # Required for PR annotations
+    
+    steps:
+      - name: Run Fraim Security Scan
+        id: fraim-scan
+        uses: fraim-dev/fraim-action@v1  # Replace with actual published action reference
+        with:
+          # Required: Set up your API key in repository secrets
+          gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
+          
+          # Optional: Customize the scan
+          workflows: 'code,iac'
+          confidence: '7'
+          
+          # Scan only changed files in PRs, full repo otherwise
+          scan-changed-files-only: ${{ github.event_name == 'pull_request' }}
+          
+          # Optional: Specify file patterns (defaults to workflow patterns if not set)
+          # file-patterns: '*.py *.js *.ts *.yaml *.yml *.tf'
+
+      # Note: PR comments are automatically added by the action itself!
+      # No additional steps needed for PR annotations and comments. 

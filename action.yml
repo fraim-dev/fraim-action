@@ -1,0 +1,183 @@
+name: 'Fraim'
+description: 'Run Fraim AI-powered workflows on your code and upload results to GitHub Security tab'
+author: 'Fraim Team'
+
+branding:
+  icon: 'shield'
+  color: 'blue'
+
+inputs:
+  workflows:
+    description: 'Workflows to run (comma-separated). Available: code, iac, all'
+    required: false
+    default: 'code'
+  
+  gemini-api-key:
+    description: 'Google Gemini API key for AI analysis'
+    required: false
+
+  openai-api-key:
+    description: 'OpenAI API key for AI analysis (alternative to Gemini)'
+    required: false
+
+  model:
+    description: 'AI model to use for analysis'
+    required: false
+    default: 'gemini/gemini-2.5-flash'
+    choices:
+      # Gemini Models
+      - 'gemini/gemini-2.5-flash'
+      - 'gemini/gemini-2.5-flash-lite-preview-06-17'
+      - 'gemini/gemini-2.5-pro'
+      # OpenAI Models  
+      - 'openai/gpt-4.1'
+      - 'openai/gpt-4.1-mini'
+      - 'openai/gpt-4.1-nano'
+      - 'openai/gpt-4o'
+      - 'openai/gpt-4o-mini'
+      - 'openai/gpt-4-turbo'
+
+  confidence:
+    description: 'Minimum confidence threshold (1-10) for filtering findings'
+    required: false
+    default: '8'
+
+  fraim-version:
+    description: 'Version of Fraim to install'
+    required: false
+    default: 'latest'
+
+outputs:
+  sarif-file:
+    description: 'Path to the generated SARIF file'
+    value: ${{ steps.fraim-scan.outputs.sarif-file }}
+  
+  results-count:
+    description: 'Number of security findings'
+    value: ${{ steps.fraim-scan.outputs.results-count }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch full history for proper diff analysis
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@bd01e18f51369d5a26f1651c3cb451d3417e3bba
+      with:
+        version: "0.7.14"
+
+    - name: Get Fraim
+      run: |
+        if [ "${{ inputs.fraim-version }}" = "latest" ]; then
+          uv pip install fraim
+        else
+          uv pip install fraim==${{ inputs.fraim-version }}
+        fi
+
+    - name: Run Fraim Security Scan
+      id: fraim-scan
+      shell: bash
+      run: |
+        set -e
+        
+        # Create output directory
+        mkdir -p fraim-results
+        
+        # Prepare Fraim arguments
+        FRAIM_ARGS="--output fraim-results"
+        FRAIM_ARGS="$FRAIM_ARGS --model ${{ inputs.model }}"
+        FRAIM_ARGS="$FRAIM_ARGS --workflows $(echo '${{ inputs.workflows }}' | tr ',' ' ')"
+        
+        # Add file patterns if specified
+        if [ -n "${{ inputs.file-patterns }}" ]; then
+          FRAIM_ARGS="$FRAIM_ARGS --globs ${{ inputs.file-patterns }}"
+        fi
+        
+        # Determine what to scan
+        if [ "${{ inputs.scan-changed-files-only }}" = "true" ] && [ "${{ github.event_name }}" = "pull_request" ]; then
+          echo "Scanning changed files only..."
+          
+          # Get changed files with proper filtering
+          CHANGED_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.sha }} | grep -E '\.(py|js|ts|jsx|tsx|java|go|rb|php|cs|cpp|c|h|yaml|yml|tf|tfvars|json)$' | tr '\n' ' ' || true)
+          
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "No relevant files changed in this PR"
+            echo "sarif-file=" >> $GITHUB_OUTPUT
+            echo "results-count=0" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          echo "Changed files to scan: $CHANGED_FILES"
+          
+          # Use file patterns instead of copying files to preserve paths for PR annotations
+          FRAIM_ARGS="$FRAIM_ARGS --path ."
+          CHANGED_GLOBS=""
+          for file in $CHANGED_FILES; do
+            if [ -f "$file" ]; then
+              CHANGED_GLOBS="$CHANGED_GLOBS $file"
+            fi
+          done
+          
+          if [ -n "$CHANGED_GLOBS" ]; then
+            FRAIM_ARGS="$FRAIM_ARGS --globs $CHANGED_GLOBS"
+          fi
+        else
+          echo "Scanning entire repository..."
+          FRAIM_ARGS="$FRAIM_ARGS --path ."
+        fi
+        
+        echo "Running: fraim $FRAIM_ARGS"
+        
+        # Run Fraim
+        fraim $FRAIM_ARGS || {
+          echo "Fraim scan failed, but continuing to check for partial results..."
+        }
+        
+        # Find the SARIF file
+        SARIF_FILE=$(find fraim-results -name "*.sarif" -type f | head -1)
+        
+        if [ -n "$SARIF_FILE" ] && [ -f "$SARIF_FILE" ]; then
+          echo "Found SARIF file: $SARIF_FILE"
+          
+          # Count results in SARIF file
+          RESULTS_COUNT=$(python3 -c "
+import json, sys
+try:
+    with open('$SARIF_FILE', 'r') as f:
+        data = json.load(f)
+    count = sum(len(run.get('results', [])) for run in data.get('runs', []))
+    print(count)
+except:
+    print(0)
+")
+          
+          echo "sarif-file=$SARIF_FILE" >> $GITHUB_OUTPUT
+          echo "results-count=$RESULTS_COUNT" >> $GITHUB_OUTPUT
+          echo "Found $RESULTS_COUNT security findings"
+        else
+          echo "No SARIF file generated"
+          echo "sarif-file=" >> $GITHUB_OUTPUT
+          echo "results-count=0" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Upload SARIF to GitHub Security
+      if: steps.fraim-scan.outputs.sarif-file != ''
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: ${{ steps.fraim-scan.outputs.sarif-file }}
+        category: fraim-security-scan
+        # Ensure proper PR annotations by specifying the commit SHA
+        checkout_path: ${{ github.workspace }}
+        ref: ${{ github.ref }}
+        sha: ${{ github.sha }}
+
+    - name: Upload SARIF as artifact
+      if: steps.fraim-scan.outputs.sarif-file != ''
+      uses: actions/upload-artifact@v4
+      with:
+        name: fraim-sarif-results
+        path: ${{ steps.fraim-scan.outputs.sarif-file }}
+        retention-days: 30
