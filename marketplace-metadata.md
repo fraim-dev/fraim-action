@@ -30,20 +30,6 @@ When publishing this action to the GitHub Actions Marketplace, use the following
 - `gemini`
 - `openai`
 
-### Example Repository Structure (for standalone action repo)
-```
-fraim-action/
-├── action.yml
-├── install-fraim.sh
-├── README.md
-├── LICENSE
-├── .gitignore
-└── examples/
-    ├── basic-usage.yml
-    ├── advanced-config.yml
-    └── multi-model.yml
-```
-
 ### Versioning Strategy
 - v1.x.x: Initial stable release
 - v2.x.x: Breaking changes (if needed)

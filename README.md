@@ -24,24 +24,22 @@ name: Security Scan
 on:
   pull_request:
     branches: [main]
-  push:
-    branches: [main]
 
 jobs:
   security-scan:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      security-events: write  # Required for uploading SARIF
-      pull-requests: write    # Required for PR comments and annotations
+      actions: read
+      security-events: write
+      pull-requests: write
     
     steps:
       - name: Run Fraim Security Scan
-        uses: ./action  # Replace with actual action reference when published
+        id: fraim-scan
+        uses: fraim-dev/fraim-action@v1
         with:
           gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
-          workflows: 'code'
-          scan-changed-files-only: 'true'
 ```
 
 ### Advanced Configuration
@@ -52,8 +50,6 @@ name: Comprehensive Security Scan
 on:
   pull_request:
     branches: [main]
-  push:
-    branches: [main]
   schedule:
     - cron: '0 2 * * 1'  # Weekly full scan
 
@@ -62,6 +58,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      actions: read
       security-events: write
       pull-requests: write
     
@@ -70,17 +67,12 @@ jobs:
         uses: ./action  # Replace with actual action reference when published
         with:
           # API Configuration
-          gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
-          model: 'gemini/gemini-2.5-flash'
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          model: 'openai/gpt-4.1-mini'
           
           # Scan Configuration
           workflows: 'code,iac'
-          confidence: '7'
-          scan-changed-files-only: ${{ github.event_name == 'pull_request' }}
-          file-patterns: '*.py *.js *.ts *.yaml *.yml *.tf'
-          
-          # PR Integration
-          comment-pr: 'true'
+          confidence: '8'
           
           # Version
           fraim-version: 'latest'
@@ -90,15 +82,11 @@ jobs:
 
 | Input | Description | Required | Default |
 |-------|-------------|----------|---------|
-| `workflows` | Workflows to run (comma-separated). Available: `code`, `iac`, `all` | No | `all` |
-| `gemini-api-key` | Google Gemini API key for AI analysis | No | - |
-| `openai-api-key` | OpenAI API key (alternative to Gemini) | No | - |
+| `workflows` | Workflows to run (comma-separated). Available: `code`, `iac` | No | `code` |
+| `gemini-api-key` | Google Gemini API key for AI analysis | Yes (if using Gemini model) | - |
+| `openai-api-key` | OpenAI API key (alternative to Gemini) | Yes (if using OpenAI model) | - |
 | `model` | AI model to use for analysis | No | `gemini/gemini-2.5-flash` |
-| `confidence` | Minimum confidence threshold (1-10) for filtering findings | No | `7` |
-| `scan-changed-files-only` | Only scan files changed in the PR (`true`/`false`) | No | `true` |
-| `file-patterns` | File patterns to scan (space-separated globs) | No | Uses workflow defaults |
-| `fraim-version` | Version of Fraim to install | No | `latest` |
-| `comment-pr` | Add a comment to the PR with scan results (`true`/`false`) | No | `true` |
+| `confidence` | Minimum confidence threshold (1-10) for filtering findings | No | `8` |
 
 ## Outputs
 
@@ -109,18 +97,18 @@ jobs:
 
 ## API Key Setup
 
-### Google Gemini (Recommended)
+### Google Gemini
 
 1. Get an API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
 2. Add it as a repository secret named `GEMINI_API_KEY`
 3. Reference it in your workflow: `gemini-api-key: ${{ secrets.GEMINI_API_KEY }}`
 
-### OpenAI (Alternative)
+### OpenAI
 
 1. Get an API key from [OpenAI Platform](https://platform.openai.com/api-keys)
 2. Add it as a repository secret named `OPENAI_API_KEY`
 3. Reference it in your workflow: `openai-api-key: ${{ secrets.OPENAI_API_KEY }}`
-4. Set the model: `model: 'gpt-4'`
+4. Set the model: `model: 'openai/gpt-4.1-mini'`
 
 ## Workflows
 
@@ -139,24 +127,6 @@ Scans infrastructure configuration files for:
 - Best practice deviations
 - Resource security settings
 
-### All Workflows (`all`)
-Runs all available workflows for comprehensive security coverage.
-
-## File Pattern Examples
-
-You can customize which files to scan using the `file-patterns` input:
-
-```yaml
-# Scan only Python and JavaScript files
-file-patterns: '*.py *.js *.ts'
-
-# Scan configuration files
-file-patterns: '*.yaml *.yml *.json *.tf *.tfvars'
-
-# Scan everything (default behavior when not specified)
-file-patterns: ''
-```
-
 ## Permissions Required
 
 Your workflow needs the following permissions:
@@ -164,6 +134,7 @@ Your workflow needs the following permissions:
 ```yaml
 permissions:
   contents: read          # To checkout code
+  actions: read           # To upload report
   security-events: write  # To upload SARIF to Security tab
   pull-requests: write    # To add PR comments and annotations
 ```
@@ -199,113 +170,6 @@ File patterns: *.py *.js *.ts
 🤖 Powered by Fraim | Documentation | Report an issue
 ```
 
-### Disable PR Comments
-
-If you want to keep SARIF annotations but disable the summary comments:
-
-```yaml
-- uses: ./action
-  with:
-    gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
-    comment-pr: 'false'
-```
-
-## Examples
-
-### PR-Only Scanning
-
-Scan only on pull requests and only changed files:
-
-```yaml
-name: PR Security Check
-
-on:
-  pull_request:
-    branches: [main]
-
-jobs:
-  security:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      security-events: write
-      pull-requests: write
-    
-    steps:
-      - name: Security Scan
-        uses: ./action
-        with:
-          gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
-          workflows: 'code'
-          scan-changed-files-only: 'true'
-```
-
-### Full Repository Scan
-
-Comprehensive scan of the entire repository:
-
-```yaml
-name: Full Security Audit
-
-on:
-  schedule:
-    - cron: '0 6 * * 1'  # Every Monday at 6 AM
-
-jobs:
-  security:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      security-events: write
-    
-    steps:
-      - name: Full Security Scan
-        uses: ./action
-        with:
-          gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
-          workflows: 'all'
-          scan-changed-files-only: 'false'
-          confidence: '6'  # Lower threshold for comprehensive audit
-```
-
-### Multi-Model Comparison
-
-Run scans with different models for comparison:
-
-```yaml
-name: Multi-Model Security Scan
-
-on:
-  workflow_dispatch:  # Manual trigger
-
-jobs:
-  gemini-scan:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      security-events: write
-    steps:
-      - name: Gemini Security Scan
-        uses: ./action
-        with:
-          gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
-          model: 'gemini/gemini-2.5-flash'
-          workflows: 'code'
-
-  openai-scan:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      security-events: write
-    steps:
-      - name: OpenAI Security Scan
-        uses: ./action
-        with:
-          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
-          model: 'gpt-4'
-          workflows: 'code'
-```
-
 ## Troubleshooting
 
 ### Common Issues
@@ -314,20 +178,14 @@ jobs:
 
 2. **Permission Denied**: Ensure your workflow has the required permissions (`security-events: write`).
 
-3. **No Files Found**: Check your `file-patterns` input and make sure the files you want to scan match the patterns.
-
-4. **Rate Limiting**: If you hit API rate limits, consider:
+3. **Rate Limiting**: If you hit API rate limits, consider:
    - Using a lower confidence threshold
    - Scanning only changed files in PRs
    - Adding delays between workflow runs
 
-### Debug Mode
-
-To enable debug logging, you can modify the action to include debug flags. The action will output detailed information about what files are being scanned and any errors encountered.
-
 ## Security Considerations
 
-- API keys are handled securely through GitHub Secrets
+- API keys should be handled securely through GitHub Secrets
 - SARIF files may contain code snippets - review artifact retention policies
 - Consider using branch protection rules to require security scans to pass
 
@@ -339,4 +197,4 @@ To enable debug logging, you can modify the action to include debug flags. The a
 
 ## License
 
-This action is provided under the MIT License. See the [LICENSE](../LICENSE) file for details. 
+This action is provided under the MIT License. See the [LICENSE](./LICENSE) file for details. 
