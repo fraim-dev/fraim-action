@@ -19,8 +19,9 @@ jobs:
     
     permissions:
       contents: read
-      security-events: write  # Required for uploading SARIF
-      pull-requests: write    # Required for PR annotations
+      actions: read
+      security-events: write
+      pull-requests: write
     
     steps:
       - name: Run Fraim Security Scan
@@ -28,17 +29,9 @@ jobs:
         uses: fraim-dev/fraim-action@v1  # Replace with actual published action reference
         with:
           # Required: Set up your API key in repository secrets
-          gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
-          
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          model: 'openai/gpt-4.1-mini'
+
           # Optional: Customize the scan
           workflows: 'code,iac'
-          confidence: '7'
-          
-          # Scan only changed files in PRs, full repo otherwise
-          scan-changed-files-only: ${{ github.event_name == 'pull_request' }}
-          
-          # Optional: Specify file patterns (defaults to workflow patterns if not set)
-          # file-patterns: '*.py *.js *.ts *.yaml *.yml *.tf'
-
-      # Note: PR comments are automatically added by the action itself!
-      # No additional steps needed for PR annotations and comments. 
+          confidence: '8'
