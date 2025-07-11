@@ -37,7 +37,7 @@ jobs:
     steps:
       - name: Run Fraim Security Scan
         id: fraim-scan
-        uses: fraim-dev/fraim-action@v1
+        uses: fraim-dev/fraim-action@v0
         with:
           gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
 ```
@@ -73,9 +73,6 @@ jobs:
           # Scan Configuration
           workflows: 'code,iac'
           confidence: '8'
-          
-          # Version
-          fraim-version: 'latest'
 ```
 
 ## Inputs
