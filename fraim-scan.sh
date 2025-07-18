@@ -28,8 +28,8 @@ main() {
     
     # Prepare Fraim arguments
     FRAIM_ARGS="--output fraim_outputs"
-    FRAIM_ARGS="$FRAIM_ARGS ${INPUT_WORKFLOWS:-code}"
     FRAIM_ARGS="$FRAIM_ARGS --model ${INPUT_MODEL:-gemini/gemini-2.5-flash}"
+    FRAIM_ARGS="$FRAIM_ARGS ${INPUT_WORKFLOWS:-code}"
     
     # Determine what to scan
     if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
