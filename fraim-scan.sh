@@ -64,10 +64,10 @@ main() {
         FRAIM_ARGS="$FRAIM_ARGS --path ."
     fi
     
-    echo "Running: uv run fraim $FRAIM_ARGS"
+    echo "Running: uv tool run fraim $FRAIM_ARGS"
     
     # Run Fraim
-    uv run fraim $FRAIM_ARGS
+    uv tool run fraim $FRAIM_ARGS
     
     # Find the SARIF file
     SARIF_FILE=$(find fraim_outputs -name "*.sarif" -type f | head -1)
