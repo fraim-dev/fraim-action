@@ -273,6 +273,8 @@ main() {
     local current_code=""
     
     # Parse the output and create suggestions
+    # Temporarily disable exit on error for the read loop
+    set +e
     while IFS= read -r line; do
         if [[ $line == FILE=* ]]; then
             current_file="${line#FILE=}"
@@ -285,7 +287,7 @@ main() {
         elif [[ $line == "---SUGGESTION---" ]]; then
             if [ -n "$current_file" ] && [ -n "$current_line" ] && [ -n "$current_code" ]; then
                 add_suggestion "$current_file" "$current_line" "" "$current_code" "$current_description"
-                ((suggestions_count++))
+                suggestions_count=$((suggestions_count + 1))
             fi
             # Reset variables
             current_file=""
@@ -296,6 +298,8 @@ main() {
             log "Found ${line#TOTAL_SUGGESTIONS=} potential fixes in SARIF"
         fi
     done <<< "$output"
+    # Re-enable exit on error
+    set -e
     
     # Create the review with all collected suggestions
     if [ $suggestions_count -gt 0 ]; then
