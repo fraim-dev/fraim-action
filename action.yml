@@ -91,6 +91,18 @@ runs:
         GITHUB_BASE_SHA: ${{ github.event.pull_request.base.sha }}
         GITHUB_SHA: ${{ github.sha }}
 
+    - name: Create PR Fix Suggestions
+      if: github.event_name == 'pull_request' && steps.fraim-scan.outputs.sarif-file != ''
+      shell: bash
+      run: |
+        chmod +x ${{ github.action_path }}/create-pr-suggestions.sh
+        ${{ github.action_path }}/create-pr-suggestions.sh "${{ steps.fraim-scan.outputs.sarif-file }}"
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        REPO_OWNER: ${{ github.repository_owner }}
+        REPO_NAME: ${{ github.event.repository.name }}
+
     - name: Upload SARIF to GitHub Security
       if: steps.fraim-scan.outputs.sarif-file != ''
       uses: github/codeql-action/upload-sarif@v3
