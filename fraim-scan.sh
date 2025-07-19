@@ -29,7 +29,7 @@ main() {
     # Prepare Fraim arguments
     FRAIM_ARGS="--output fraim_outputs"
     FRAIM_ARGS="$FRAIM_ARGS --model ${INPUT_MODEL:-gemini/gemini-2.5-flash}"
-    FRAIM_ARGS="$FRAIM_ARGS --workflows $(echo "${INPUT_WORKFLOWS:-code}" | tr ',' ' ')"
+    FRAIM_ARGS="$FRAIM_ARGS ${INPUT_WORKFLOWS:-code}"
     
     # Determine what to scan
     if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
@@ -48,7 +48,7 @@ main() {
         echo "Changed files to scan: $CHANGED_FILES"
         
         # Use file patterns instead of copying files to preserve paths for PR annotations
-        FRAIM_ARGS="$FRAIM_ARGS --path ."
+        FRAIM_ARGS="$FRAIM_ARGS --location ."
         CHANGED_GLOBS=""
         for file in $CHANGED_FILES; do
             if [ -f "$file" ]; then
@@ -61,7 +61,7 @@ main() {
         fi
     else
         echo "Scanning entire repository..."
-        FRAIM_ARGS="$FRAIM_ARGS --path ."
+        FRAIM_ARGS="$FRAIM_ARGS --location ."
     fi
     
     echo "Running: uv tool run fraim $FRAIM_ARGS"

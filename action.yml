@@ -74,7 +74,7 @@ runs:
     - name: Get Fraim v0.2.0
       shell: bash
       run: |
-        uv tool install fraim==v0.2.0
+        uv tool install fraim==v0.3.3.dev1
 
     - name: Run Fraim Security Scan
       id: fraim-scan
