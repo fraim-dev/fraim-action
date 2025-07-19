@@ -67,12 +67,12 @@ process_sarif() {
     log "Processing SARIF file: $sarif_file"
     
     # Use Python to parse SARIF and extract fixes
-    python3 << 'EOF'
+    SARIF_FILE="$sarif_file" python3 << 'EOF'
 import json
 import sys
 import os
 
-sarif_file = sys.argv[1] if len(sys.argv) > 1 else os.environ.get('SARIF_FILE')
+sarif_file = os.environ.get('SARIF_FILE')
 
 try:
     with open(sarif_file, 'r') as f:
