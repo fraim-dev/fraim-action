@@ -2,6 +2,9 @@
 
 set -e
 
+# Enable debug mode for more verbose output
+set -x
+
 SARIF_FILE="$1"
 
 # Function to log messages
@@ -49,8 +52,12 @@ EOF
 
 # Function to create a PR review with all suggestions
 create_review_with_suggestions() {
+    # Temporarily disable exit on error for this function
+    set +e
+    
     if [ ${#SUGGESTIONS[@]} -eq 0 ]; then
         log "No suggestions to create"
+        set -e
         return 0
     fi
     
@@ -83,12 +90,32 @@ create_review_with_suggestions() {
             comments: $comments
         }')
     
-    curl -s -X POST \
+    echo "Debug: About to create review with data:"
+    echo "$review_data" | jq .
+    
+    local response
+    response=$(curl -s -w "%{http_code}" -X POST \
         -H "Authorization: Bearer $GITHUB_TOKEN" \
         -H "Accept: application/vnd.github.v3+json" \
         -H "Content-Type: application/json" \
         "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/pulls/$PR_NUMBER/reviews" \
-        -d "$review_data"
+        -d "$review_data")
+    
+    local http_code="${response: -3}"
+    local body="${response%???}"
+    
+    echo "Debug: API response code: $http_code"
+    echo "Debug: API response body: $body"
+    
+    if [ "$http_code" -ge 400 ]; then
+        echo "Error: GitHub API call failed with status $http_code"
+        echo "Response: $body"
+        set -e
+        return 1
+    fi
+    
+    set -e
+    return 0
 }
 
 # Function to process SARIF file
@@ -110,9 +137,18 @@ import os
 
 sarif_file = os.environ.get('SARIF_FILE')
 
+print(f"Debug: Processing SARIF file: {sarif_file}", file=sys.stderr)
+
+if not sarif_file:
+    print("Error: No SARIF file path provided", file=sys.stderr)
+    sys.exit(1)
+
 try:
     with open(sarif_file, 'r') as f:
         sarif_data = json.load(f)
+    
+    print(f"Debug: Successfully loaded SARIF file", file=sys.stderr)
+    print(f"Debug: Found {len(sarif_data.get('runs', []))} runs", file=sys.stderr)
     
     suggestions_created = 0
     
@@ -172,21 +208,63 @@ EOF
 
 # Main function
 main() {
+    echo "Debug: Starting main function"
+    echo "Debug: SARIF_FILE=$SARIF_FILE"
+    echo "Debug: GITHUB_TOKEN is $([ -n "$GITHUB_TOKEN" ] && echo "set" || echo "not set")"
+    echo "Debug: PR_NUMBER=$PR_NUMBER"
+    echo "Debug: REPO_OWNER=$REPO_OWNER"
+    echo "Debug: REPO_NAME=$REPO_NAME"
+    echo "Debug: GITHUB_SHA=$GITHUB_SHA"
+    
+    # Check for required tools
+    if ! command -v jq >/dev/null 2>&1; then
+        echo "Error: jq is not installed"
+        exit 1
+    fi
+    
+    if ! command -v python3 >/dev/null 2>&1; then
+        echo "Error: python3 is not installed"
+        exit 1
+    fi
+    
     if [ -z "$SARIF_FILE" ]; then
         log "No SARIF file provided"
         exit 1
     fi
     
-    if [ -z "$GITHUB_TOKEN" ] || [ -z "$PR_NUMBER" ] || [ -z "$REPO_OWNER" ] || [ -z "$REPO_NAME" ]; then
+    if [ -z "$GITHUB_TOKEN" ] || [ -z "$PR_NUMBER" ] || [ -z "$REPO_OWNER" ] || [ -z "$REPO_NAME" ] || [ -z "$GITHUB_SHA" ]; then
         log "Missing required environment variables"
+        echo "GITHUB_TOKEN: $([ -n "$GITHUB_TOKEN" ] && echo "set" || echo "not set")"
+        echo "PR_NUMBER: $PR_NUMBER"
+        echo "REPO_OWNER: $REPO_OWNER" 
+        echo "REPO_NAME: $REPO_NAME"
+        echo "GITHUB_SHA: $GITHUB_SHA"
         exit 1
     fi
     
     log "Creating PR fix suggestions from SARIF file"
     
     # Process SARIF and create suggestions
+    echo "Debug: About to process SARIF file: $SARIF_FILE"
+    if [ ! -f "$SARIF_FILE" ]; then
+        echo "Error: SARIF file does not exist: $SARIF_FILE"
+        exit 1
+    fi
+    
+    echo "Debug: SARIF file exists, size: $(wc -c < "$SARIF_FILE") bytes"
+    
     local output
     output=$(process_sarif "$SARIF_FILE" "$SARIF_FILE")
+    local process_exit_code=$?
+    
+    if [ $process_exit_code -ne 0 ]; then
+        echo "Error: Failed to process SARIF file (exit code: $process_exit_code)"
+        echo "Output: $output"
+        exit 1
+    fi
+    
+    echo "Debug: SARIF processing output:"
+    echo "$output"
     
     local suggestions_count=0
     local current_file=""
@@ -220,9 +298,16 @@ main() {
     done <<< "$output"
     
     # Create the review with all collected suggestions
-    create_review_with_suggestions
-    
-    log "Created $suggestions_count PR review suggestions"
+    if [ $suggestions_count -gt 0 ]; then
+        if create_review_with_suggestions; then
+            log "Successfully created PR review with $suggestions_count suggestions"
+        else
+            echo "Warning: Failed to create PR review, but continuing..."
+        fi
+    else
+        echo "Debug: No suggestions found, skipping review creation"
+        log "No suggestions found in SARIF file"
+    fi
 }
 
 # Run main function
