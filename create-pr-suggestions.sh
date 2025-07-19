@@ -9,18 +9,16 @@ log() {
     echo "::debug::$1"
 }
 
-# Function to create a PR review comment with suggestion
-create_suggestion() {
+# Array to store all suggestions for batch review
+declare -a SUGGESTIONS=()
+
+# Function to add a suggestion to the batch
+add_suggestion() {
     local file="$1"
     local line="$2"
     local original_code="$3"
     local suggested_code="$4"
     local description="$5"
-    
-    # Escape special characters for JSON
-    original_code=$(echo "$original_code" | jq -R .)
-    suggested_code=$(echo "$suggested_code" | jq -R .)
-    description=$(echo "$description" | jq -R .)
     
     # Create suggestion format
     local suggestion_body
@@ -33,9 +31,9 @@ $suggested_code
 EOF
 )
     
-    # Create review comment via GitHub API
-    local comment_data
-    comment_data=$(jq -n \
+    # Add to suggestions array
+    local suggestion_json
+    suggestion_json=$(jq -n \
         --arg body "$suggestion_body" \
         --arg path "$file" \
         --argjson line "$line" \
@@ -45,14 +43,52 @@ EOF
             line: $line
         }')
     
-    log "Creating suggestion for $file:$line"
+    SUGGESTIONS+=("$suggestion_json")
+    log "Added suggestion for $file:$line"
+}
+
+# Function to create a PR review with all suggestions
+create_review_with_suggestions() {
+    if [ ${#SUGGESTIONS[@]} -eq 0 ]; then
+        log "No suggestions to create"
+        return 0
+    fi
+    
+    log "Creating PR review with ${#SUGGESTIONS[@]} suggestions"
+    
+    # Build the comments array for the review
+    local comments_json="["
+    local first=true
+    for suggestion in "${SUGGESTIONS[@]}"; do
+        if [ "$first" = true ]; then
+            first=false
+        else
+            comments_json="$comments_json,"
+        fi
+        comments_json="$comments_json$suggestion"
+    done
+    comments_json="$comments_json]"
+    
+    # Create the review
+    local review_data
+    review_data=$(jq -n \
+        --arg commit_id "$GITHUB_SHA" \
+        --arg body "🔒 **Fraim Security Review**\n\nI've found some security issues with suggested fixes. Please review the suggestions below:" \
+        --arg event "COMMENT" \
+        --argjson comments "$comments_json" \
+        '{
+            commit_id: $commit_id,
+            body: $body,
+            event: $event,
+            comments: $comments
+        }')
     
     curl -s -X POST \
         -H "Authorization: Bearer $GITHUB_TOKEN" \
         -H "Accept: application/vnd.github.v3+json" \
         -H "Content-Type: application/json" \
-        "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/pulls/$PR_NUMBER/comments" \
-        -d "$comment_data" || true
+        "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/pulls/$PR_NUMBER/reviews" \
+        -d "$review_data"
 }
 
 # Function to process SARIF file
@@ -170,7 +206,7 @@ main() {
             current_code="${line#SUGGESTED_CODE=}"
         elif [[ $line == "---SUGGESTION---" ]]; then
             if [ -n "$current_file" ] && [ -n "$current_line" ] && [ -n "$current_code" ]; then
-                create_suggestion "$current_file" "$current_line" "" "$current_code" "$current_description"
+                add_suggestion "$current_file" "$current_line" "" "$current_code" "$current_description"
                 ((suggestions_count++))
             fi
             # Reset variables
@@ -182,6 +218,9 @@ main() {
             log "Found ${line#TOTAL_SUGGESTIONS=} potential fixes in SARIF"
         fi
     done <<< "$output"
+    
+    # Create the review with all collected suggestions
+    create_review_with_suggestions
     
     log "Created $suggestions_count PR review suggestions"
 }
