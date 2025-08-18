@@ -71,10 +71,10 @@ runs:
         version: "0.7.14"
         enable-cache: false
 
-    - name: Get Fraim v0.2.0
+    - name: Get Fraim v0.2.1
       shell: bash
       run: |
-        uv tool install fraim==v0.2.0
+        uv tool install fraim==v0.2.1
 
     - name: Run Fraim Security Scan
       id: fraim-scan
