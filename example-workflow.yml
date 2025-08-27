@@ -26,11 +26,16 @@ jobs:
     steps:
       - name: Run Fraim Security Scan
         id: fraim-scan
-        uses: fraim-dev/fraim-action@v1  # Replace with actual published action reference
+        uses: fraim-dev/fraim-action@v0  # Use v0 for latest v0.x.x releases
         with:
-          # Required: Set up your API key in repository secrets
-          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
-          model: 'openai/gpt-4.1-mini'
+          # Required: Set up your API key in repository secrets (choose one)
+          gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
+          # openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          
+          # AI model to use (default: gemini/gemini-2.5-flash)
+          model: 'gemini/gemini-2.5-flash'
+          # Alternative OpenAI models:
+          # model: 'openai/gpt-4o-mini'
 
           # Optional: Customize the scan
           workflows: 'code,iac'

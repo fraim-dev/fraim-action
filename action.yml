@@ -71,10 +71,10 @@ runs:
         version: "0.7.14"
         enable-cache: false
 
-    - name: Get Fraim v0.2.1
+    - name: Get Fraim v0.5.1
       shell: bash
       run: |
-        uv tool install fraim==v0.2.1
+        uv tool install fraim==v0.5.1
 
     - name: Run Fraim Security Scan
       id: fraim-scan
@@ -87,6 +87,7 @@ runs:
         OPENAI_API_KEY: ${{ inputs.openai-api-key }}
         INPUT_MODEL: ${{ inputs.model }}
         INPUT_WORKFLOWS: ${{ inputs.workflows }}
+        INPUT_CONFIDENCE: ${{ inputs.confidence }}
         GITHUB_EVENT_NAME: ${{ github.event_name }}
         GITHUB_BASE_SHA: ${{ github.event.pull_request.base.sha }}
         GITHUB_SHA: ${{ github.sha }}

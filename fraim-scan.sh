@@ -12,7 +12,7 @@ set_output() {
     echo "$1=$2" >> $GITHUB_OUTPUT
 }
 
-# Function to get changed files for PR
+# Function to get changed files for PR (kept for backward compatibility/debugging)
 get_changed_files() {
     git diff --name-only ${GITHUB_BASE_SHA} ${GITHUB_SHA} | \
     grep -E '\.(py|js|ts|jsx|tsx|java|go|rb|php|cs|cpp|c|h|yaml|yml|tf|tfvars|json)$' | \
@@ -26,48 +26,67 @@ main() {
     # Create output directory
     mkdir -p fraim_outputs
     
-    # Prepare Fraim arguments
-    FRAIM_ARGS="--output fraim_outputs"
-    FRAIM_ARGS="$FRAIM_ARGS --model ${INPUT_MODEL:-gemini/gemini-2.5-flash}"
-    FRAIM_ARGS="$FRAIM_ARGS --workflows $(echo "${INPUT_WORKFLOWS:-code}" | tr ',' ' ')"
+    # Prepare global Fraim arguments (these must come BEFORE the workflow subcommand)
+    GLOBAL_ARGS="--output fraim_outputs"
     
-    # Determine what to scan
-    if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
-        echo "Scanning changed files only..."
-        
-        # Get changed files with proper filtering
-        CHANGED_FILES=$(get_changed_files)
-        
-        if [ -z "$CHANGED_FILES" ]; then
-            echo "No relevant files changed in this PR"
-            set_output "sarif-file" ""
-            set_output "results-count" "0"
-            exit 0
-        fi
-        
-        echo "Changed files to scan: $CHANGED_FILES"
-        
-        # Use file patterns instead of copying files to preserve paths for PR annotations
-        FRAIM_ARGS="$FRAIM_ARGS --path ."
-        CHANGED_GLOBS=""
-        for file in $CHANGED_FILES; do
-            if [ -f "$file" ]; then
-                CHANGED_GLOBS="$CHANGED_GLOBS $file"
-            fi
-        done
-        
-        if [ -n "$CHANGED_GLOBS" ]; then
-            FRAIM_ARGS="$FRAIM_ARGS --globs $CHANGED_GLOBS"
-        fi
-    else
-        echo "Scanning entire repository..."
-        FRAIM_ARGS="$FRAIM_ARGS --path ."
+    # Add confidence if specified
+    if [ -n "${INPUT_CONFIDENCE}" ]; then
+        GLOBAL_ARGS="$GLOBAL_ARGS --confidence ${INPUT_CONFIDENCE}"
     fi
     
-    echo "Running: uv tool run fraim $FRAIM_ARGS"
+    # Add model if specified
+    if [ -n "${INPUT_MODEL}" ]; then
+        GLOBAL_ARGS="$GLOBAL_ARGS --model ${INPUT_MODEL}"
+    fi
     
-    # Run Fraim
-    uv tool run fraim $FRAIM_ARGS
+    # Parse workflows (comma-separated list)
+    WORKFLOWS=$(echo "${INPUT_WORKFLOWS:-code}" | tr ',' ' ')
+    
+    # Determine scan location and diff args
+    LOCATION_ARGS="--location ."
+    DIFF_ARGS=""
+    
+    if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
+        echo "Scanning PR diff using --diff mode..."
+        
+        # Verify we have the required SHAs
+        if [ -z "$GITHUB_BASE_SHA" ] || [ -z "$GITHUB_SHA" ]; then
+            echo "ERROR: Missing base or head SHA for PR diff scanning"
+            echo "GITHUB_BASE_SHA: $GITHUB_BASE_SHA"
+            echo "GITHUB_SHA: $GITHUB_SHA"
+            exit 1
+        fi
+        
+        echo "Base SHA: $GITHUB_BASE_SHA"
+        echo "Head SHA: $GITHUB_SHA"
+        
+        # Use diff mode for PR scanning
+        DIFF_ARGS="--diff true --base $GITHUB_BASE_SHA --head $GITHUB_SHA"
+    else
+        echo "Scanning entire repository..."
+        # No diff args needed for full repository scan
+    fi
+    
+    # Run Fraim for each workflow
+    for workflow in $WORKFLOWS; do
+        echo "Running workflow: $workflow"
+        
+        # Build workflow-specific arguments (these come AFTER the workflow subcommand)
+        WORKFLOW_ARGS="$LOCATION_ARGS"
+        
+        # Add diff arguments if this is a PR scan
+        if [ -n "$DIFF_ARGS" ]; then
+            WORKFLOW_ARGS="$WORKFLOW_ARGS $DIFF_ARGS"
+        fi
+        
+        # Build the complete command: fraim [global_args] [workflow] [workflow_args]
+        CMD="uv tool run fraim $GLOBAL_ARGS $workflow $WORKFLOW_ARGS"
+        
+        echo "Running: $CMD"
+        
+        # Run the specific workflow
+        $CMD
+    done
     
     # Find the SARIF file
     SARIF_FILE=$(find fraim_outputs -name "*.sarif" -type f | head -1)
