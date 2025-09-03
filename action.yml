@@ -20,10 +20,14 @@ inputs:
     description: 'OpenAI API key for AI analysis (alternative to Gemini)'
     required: false
 
+  anthropic-api-key:
+    description: 'Anthropic API key for AI analysis (alternative to Gemini/OpenAI)'
+    required: false
+
   model:
     description: 'AI model to use for analysis'
     required: false
-    default: 'gemini/gemini-2.5-flash'
+    default: 'anthropic/claude-sonnet-4-20250514'
     choices:
       # Gemini Models
       - 'gemini/gemini-2.5-flash'
@@ -36,6 +40,12 @@ inputs:
       - 'openai/gpt-4o'
       - 'openai/gpt-4o-mini'
       - 'openai/gpt-4-turbo'
+      # Anthropic Models
+      - 'anthropic/claude-opus-4-1-20250805'
+      - 'anthropic/claude-opus-4-20250514'
+      - 'anthropic/claude-sonnet-4-20250514'
+      - 'anthropic/claude-3-7-sonnet-20250219'
+      - 'anthropic/claude-3-5-sonnet-20240620'
 
   confidence:
     description: 'Minimum confidence threshold (1-10) for filtering findings'
@@ -85,6 +95,7 @@ runs:
       env:
         GEMINI_API_KEY: ${{ inputs.gemini-api-key }}
         OPENAI_API_KEY: ${{ inputs.openai-api-key }}
+        ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
         INPUT_MODEL: ${{ inputs.model }}
         INPUT_WORKFLOWS: ${{ inputs.workflows }}
         INPUT_CONFIDENCE: ${{ inputs.confidence }}
