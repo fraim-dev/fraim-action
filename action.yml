@@ -7,10 +7,14 @@ branding:
   color: 'blue'
 
 inputs:
-  workflows:
-    description: 'Workflows to run (comma-separated). Available: code, iac'
-    required: false
-    default: 'code'
+  workflow:
+    description: 'Workflow to run. Available: code, iac, risk_flagger'
+    required: true
+
+  workflow_args:
+    description: 'Workflow-specific arguments. See specific workflow docs for details.'
+    type: object
+    required: true
   
   gemini-api-key:
     description: 'Google Gemini API key for AI analysis'
@@ -20,10 +24,18 @@ inputs:
     description: 'OpenAI API key for AI analysis (alternative to Gemini)'
     required: false
 
+  anthropic-api-key:
+    description: 'Anthropic API key for AI analysis (alternative to Gemini/OpenAI)'
+    required: false
+
+  github-token:
+    description: 'GitHub token for authentication (needed if you want to request reviewers)'
+    required: false
+
   model:
     description: 'AI model to use for analysis'
     required: false
-    default: 'gemini/gemini-2.5-flash'
+    default: 'anthropic/claude-sonnet-4-20250514'
     choices:
       # Gemini Models
       - 'gemini/gemini-2.5-flash'
@@ -36,11 +48,12 @@ inputs:
       - 'openai/gpt-4o'
       - 'openai/gpt-4o-mini'
       - 'openai/gpt-4-turbo'
-
-  confidence:
-    description: 'Minimum confidence threshold (1-10) for filtering findings'
-    required: false
-    default: '8'
+      # Anthropic Models
+      - 'anthropic/claude-opus-4-1-20250805'
+      - 'anthropic/claude-opus-4-20250514'
+      - 'anthropic/claude-sonnet-4-20250514'
+      - 'anthropic/claude-3-7-sonnet-20250219'
+      - 'anthropic/claude-3-5-sonnet-20240620'
 
 outputs:
   sarif-file:
@@ -71,26 +84,36 @@ runs:
         version: "0.7.14"
         enable-cache: false
 
-    - name: Get Fraim v0.5.1
+    - name: Install Python dependencies
       shell: bash
       run: |
-        uv tool install fraim==v0.5.1
+        cd ${{ github.action_path }}
+        uv sync
+
+    - name: Get Fraim v0.6.0.dev1
+      shell: bash
+      run: |
+        uv tool install fraim==v0.6.0.dev1
 
     - name: Run Fraim Security Scan
       id: fraim-scan
       shell: bash
       run: |
-        chmod +x ${{ github.action_path }}/fraim-scan.sh
-        ${{ github.action_path }}/fraim-scan.sh
+        uv run --script ${{ github.action_path }}/src/fraim.py
       env:
+        GITHUB_TOKEN: ${{ inputs.github-token || github.token }}
+        GH_TOKEN: ${{ inputs.github-token || github.token }}
         GEMINI_API_KEY: ${{ inputs.gemini-api-key }}
         OPENAI_API_KEY: ${{ inputs.openai-api-key }}
+        ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
         INPUT_MODEL: ${{ inputs.model }}
-        INPUT_WORKFLOWS: ${{ inputs.workflows }}
-        INPUT_CONFIDENCE: ${{ inputs.confidence }}
+        INPUT_WORKFLOW: ${{ inputs.workflow }}
+        WORKFLOW_ARGS: ${{ inputs.workflow_args }}
         GITHUB_EVENT_NAME: ${{ github.event_name }}
         GITHUB_BASE_SHA: ${{ github.event.pull_request.base.sha }}
         GITHUB_SHA: ${{ github.sha }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+        GITHUB_EVENT_PATH: ${{ github.event_path }}
 
     - name: Upload SARIF to GitHub Security
       if: steps.fraim-scan.outputs.sarif-file != ''

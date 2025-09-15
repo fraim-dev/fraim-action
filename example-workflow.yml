@@ -6,6 +6,8 @@ name: Security Scan with Fraim
 on:
   pull_request:
     branches: [main, master]
+  pull_request_review:
+    branches: [main, master]
   push:
     branches: [main, master]
   schedule:
@@ -32,11 +34,22 @@ jobs:
           gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
           # openai-api-key: ${{ secrets.OPENAI_API_KEY }}
           
-          # AI model to use (default: gemini/gemini-2.5-flash)
+          # AI model to use (default: anthropic/claude-sonnet-4-20250514)
           model: 'gemini/gemini-2.5-flash'
-          # Alternative OpenAI models:
+          # Alternative models:
           # model: 'openai/gpt-4o-mini'
+          # model: 'anthropic/claude-sonnet-4-20250514'
 
-          # Optional: Customize the scan
-          workflows: 'code,iac'
-          confidence: '8'
+          # Required: Workflow to run (code, iac, or risk_flagger)
+          workflow: 'risk_flagger'
+          
+          # Required: Workflow-specific arguments as JSON object
+          workflow_args: |
+            {
+              "confidence": "8",
+              "custom_risk_list_json": "",
+              "custom_risk_list_filepath": "",
+              "custom_risk_list_action": "merge",
+              "approver": "security-team-lead",
+              "should_block_pull_request": "true"
+            }
