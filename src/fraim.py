@@ -96,7 +96,7 @@ def main() -> None:
     os.makedirs('fraim_outputs', exist_ok=True)
     
     # Parse workflow arguments once
-    workflow_args_raw = os.environ.get('WORKFLOW_ARGS', '')
+    workflow_args_raw = os.environ.get('WORKFLOW_ARGS', '{}')
     print(f"Workflow args: {workflow_args_raw}")
     
     args = parse_workflow_args()
