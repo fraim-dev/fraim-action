@@ -341,7 +341,7 @@ def handle_pull_request_review(args: Dict[str, str], workflow: str, should_block
                     approver_text = approver if approver else '[not specified]'
                     print(f"::error::Security risks detected! Waiting for approval from {approver_text}.")
                     create_status_check(
-                        state="error",
+                        state="failure",
                         description=f"Security risks detected! Waiting for approval from {approver_text}.",
                         github_repository=github_repository,
                         context=f"fraim/{workflow}",
@@ -387,7 +387,7 @@ def handle_pull_request_block(args: Dict[str, str], workflow: str, should_block_
                 print("::error::Security risks detected! This pull request is blocked pending security team approval.")
                 print(f"::notice::@{approver_text} must review and approve this PR.")
                 create_status_check(
-                    state="error",
+                    state="failure",
                     description=f"Security risks detected! Waiting for approval from {approver_text}.",
                     github_repository=github_repository,
                     context=f"fraim/{workflow}"
