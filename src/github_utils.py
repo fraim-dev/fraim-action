@@ -62,18 +62,3 @@ def create_status_check(state: str, description: str, github_repository: str, co
         log(f"Failed to create GitHub status check: {e}")
     except Exception as e:
         log(f"Error creating status check: {e}")
-
-
-def create_or_update_status_check(state: str, description: str, github_repository: str, context: str = "fraim-security-scan") -> None:
-    """Create or update a GitHub status check on the current commit.
-    
-    This is an alias for create_status_check since GitHub automatically updates
-    existing status checks with the same context.
-    
-    Args:
-        state: Status state ('error', 'failure', 'pending', 'success')
-        description: Description of the status
-        github_repository: GitHub repository (e.g., 'owner/repo')
-        context: Context/name for the status check
-    """
-    create_status_check(state, description, github_repository, context)
