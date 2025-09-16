@@ -170,7 +170,7 @@ def main() -> None:
         os.unlink(temp_output_path)
         
     security_findings_found = check_output_for_risk_findings(output_content)
-    handle_pull_request_block(args, workflow, should_block_pr, security_findings_found, github_repository)
+    handle_pull_request_block(args, workflow, should_block_pr, security_findings_found, github_repository, pr_number)
 
     # Find the SARIF file
     sarif_files = glob.glob('fraim_outputs/*.sarif')

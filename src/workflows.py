@@ -353,7 +353,7 @@ def handle_pull_request_review(args: Dict[str, str], workflow: str, should_block
         # Exit early for this event since we've handled it.
         sys.exit(0)
                 
-def handle_pull_request_block(args: Dict[str, str], workflow: str, should_block_pr: bool, security_findings_found: bool, github_repository: str) -> None:
+def handle_pull_request_block(args: Dict[str, str], workflow: str, should_block_pr: bool, security_findings_found: bool, github_repository: str, pr_number: int) -> None:
     """Handle pull request blocking logic for risk_flagger workflow.
     
     Args:
