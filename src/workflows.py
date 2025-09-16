@@ -369,9 +369,20 @@ def handle_pull_request_block(args: Dict[str, str], workflow: str, should_block_
     if github_event_name == "pull_request":
         if should_block_pr == True and workflow == "risk_flagger":            
             if security_findings_found:
-                log("Found security risks, blocking pull request")
-
                 approver = args.get('approver')
+                
+                is_approved = check_approver_approval(approver, github_repository, pr_number)
+
+                if is_approved:
+                    print(f"Found security risks, but approver {approver} has approved the PR")
+                    create_status_check(
+                        state="success",
+                        description=f"Security review completed. PR approved by {approver}.",
+                        github_repository=github_repository,
+                        context=f"fraim/{workflow}",
+                    )
+                    return
+
                 approver_text = approver if approver else '[not specified]'
                 print("::error::Security risks detected! This pull request is blocked pending security team approval.")
                 print(f"::notice::@{approver_text} must review and approve this PR.")
