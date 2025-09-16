@@ -1,197 +1,142 @@
-# Fraim Security Scan GitHub Action
+# AI-powered Security Workflows
 
-A GitHub Action that runs [Fraim](https://github.com/fraim-dev/fraim) AI-powered security analysis on your code and automatically uploads the results to GitHub's Security tab using SARIF format.
+Fraim provides specialized AI-powered workflows for different types of security analysis. Each workflow is optimized for specific use cases and file types, allowing you to choose the right tool for your security needs.
 
-## Features
+## Available Workflows
 
-- 🤖 **AI-Powered Analysis**: Uses advanced language models to detect security vulnerabilities
-- 🎯 **Smart Scanning**: Option to scan only changed files in PRs for faster feedback
-- 📊 **GitHub Integration**: Automatically uploads results to GitHub Security tab with annotations
-- 💬 **Automatic PR Comments**: Adds detailed comments to PRs with scan results and links
-- 🔧 **Configurable Workflows**: Supports code security analysis and Infrastructure as Code (IaC) scanning
-- 📈 **Multiple AI Providers**: Support for Google Gemini and OpenAI models
-- 🎨 **Rich Reporting**: Generates both SARIF and HTML reports
+### ⚠️ Risk Flagger
+**Workflow ID**: `risk_flagger`
 
-## Usage
+Identifies code changes that require security team review and investigation. Integrates with Github and allows you to loop in a reviewer and block a PR until that reviewer approves.
 
-### Basic Usage
+[Docs](https://docs.fraim.dev/workflows/risk_flagger#github-actions-integration)
 
-Add this action to your workflow file (e.g., `.github/workflows/security.yml`):
-
-```yaml
-name: Security Scan
-
+```bash
+name: Risk Assessment
 on:
   pull_request:
-    branches: [main]
+    branches: [dev]
+  pull_request_review:
+    types: [submitted]
 
 jobs:
-  security-scan:
+  risk-assessment:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      actions: read
-      security-events: write
-      pull-requests: write
-    
     steps:
-      - name: Run Fraim Security Scan
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      
+      - name: Run Fraim Risk Flagger Scan
         id: fraim-scan
         uses: fraim-dev/fraim-action@v0
         with:
-          gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          workflow: risk_flagger
+          workflow_args: |
+            {
+              "approver": "security",
+              "should-block-pull-request": true,
+              "custom-risk-list-json": {
+                "Change Protection": "All changes to sensitive_data.py should be flagged.",
+                "API Changes": "Any modifications to API endpoints require security review."
+              },
+              "custom-risk-list-action": "replace",
+              "chunk-size": 5000,
+              "confidence": 7
+            }
+          github-token: ${{ secrets.GH_TOKEN }}
 ```
 
-### Advanced Configuration
+### 🔍 Code Security Analysis
+**Workflow ID**: `code`
 
-```yaml
-name: Comprehensive Security Scan
+Static analysis of application source code for security vulnerabilities.
 
+[Docs](https://docs.fraim.dev/workflows/code#github-actions)
+
+```bash
+name: Code Security Analysis
 on:
   pull_request:
     branches: [main]
-  schedule:
-    - cron: '0 2 * * 1'  # Weekly full scan
 
 jobs:
   security-scan:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      actions: read
-      security-events: write
-      pull-requests: write
-    
     steps:
-      - name: Run Fraim Security Scan
-        uses: ./action  # Replace with actual action reference when published
+      - uses: actions/checkout@v3
+      
+      - name: Run Fraim Code Security Scan
+        uses: fraim-dev/fraim-action@94198c06f33e74d44d94261c25423ca972b51031
         with:
-          # API Configuration
-          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
-          model: 'openai/gpt-4.1-mini'
-          
-          # Scan Configuration
-          workflows: 'code,iac'
-          confidence: '8'
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          workflow: code
 ```
 
-## Inputs
+### 🏗️ Infrastructure as Code Analysis
+**Workflow ID**: `iac`
 
-| Input | Description | Required | Default |
-|-------|-------------|----------|---------|
-| `workflows` | Workflows to run (comma-separated). Available: `code`, `iac` | No | `code` |
-| `gemini-api-key` | Google Gemini API key for AI analysis | Yes (if using Gemini model) | - |
-| `openai-api-key` | OpenAI API key (alternative to Gemini) | Yes (if using OpenAI model) | - |
-| `model` | AI model to use for analysis | No | `gemini/gemini-2.5-flash` |
-| `confidence` | Minimum confidence threshold (1-10) for filtering findings | No | `8` |
+Security analysis of infrastructure configuration files and deployment manifests.
 
-## Outputs
+[Docs](https://docs.fraim.dev/workflows/iac#available-workflow-args)
 
-| Output | Description |
-|--------|-------------|
-| `sarif-file` | Path to the generated SARIF file |
-| `results-count` | Number of security findings detected |
+```bash
+name: IaC Security
+on:
+  pull_request:
+    branches: [main]
 
-## API Key Setup
-
-### Google Gemini
-
-1. Get an API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
-2. Add it as a repository secret named `GEMINI_API_KEY`
-3. Reference it in your workflow: `gemini-api-key: ${{ secrets.GEMINI_API_KEY }}`
-
-### OpenAI
-
-1. Get an API key from [OpenAI Platform](https://platform.openai.com/api-keys)
-2. Add it as a repository secret named `OPENAI_API_KEY`
-3. Reference it in your workflow: `openai-api-key: ${{ secrets.OPENAI_API_KEY }}`
-4. Set the model: `model: 'openai/gpt-4.1-mini'`
-
-## Workflows
-
-### Code Security Analysis (`code`)
-Analyzes source code for security vulnerabilities including:
-- SQL injection
-- Cross-site scripting (XSS)
-- Authentication issues
-- Input validation problems
-- And many more security patterns
-
-### Infrastructure as Code Analysis (`iac`)
-Scans infrastructure configuration files for:
-- Cloud security misconfigurations
-- Compliance violations
-- Best practice deviations
-- Resource security settings
-
-## Permissions Required
-
-Your workflow needs the following permissions:
-
-```yaml
-permissions:
-  contents: read          # To checkout code
-  actions: read           # To upload report
-  security-events: write  # To upload SARIF to Security tab
-  pull-requests: write    # To add PR comments and annotations
+jobs:
+  iac-security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Run Fraim IaC Security Scan
+        uses: fraim-dev/fraim-action@94198c06f33e74d44d94261c25423ca972b51031
+        with:
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          workflow: iac
 ```
 
-## PR Annotations and Comments
+### 📋 System Analysis
+**Workflow ID**: `system_analysis`
 
-The action provides two types of PR feedback:
+Extracts system purpose, users, and business context from codebases and documentation.
 
-1. **SARIF Annotations**: Automatically created by GitHub when SARIF is uploaded - these appear as inline comments on specific lines of code
-2. **PR Comments**: A summary comment showing scan results, configuration, and links to detailed findings
+[Docs](https://docs.fraim.dev/workflows/system_analysis#github-actions)
 
-### Example PR Comment
+```bash
+name: System Analysis
+on:
+  workflow_dispatch:
+    inputs:
+      business_context:
+        description: 'Business context for analysis'
+        required: false
+        default: 'Web application'
 
-When the action runs on a PR, it will automatically add a comment like:
-
+jobs:
+  system-analysis:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Run Fraim System Analysis
+        uses: fraim-dev/fraim-action@94198c06f33e74d44d94261c25423ca972b51031
+        with:
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          workflow: system_analysis
+          workflow_args: |
+            {
+              "business-context": "${{ github.event.inputs.business_context }}",
+              "focus-areas": ["security", "authentication", "data_processing"]
+            }
+      
+      - name: Upload Analysis
+        uses: actions/upload-artifact@v3
+        with:
+          name: system-analysis
+          path: fraim_output/system_analysis_*.json
 ```
-🛡️ Fraim Security Scan Results
-
-Workflows: code,iac
-Model: gemini/gemini-2.5-flash
-Confidence threshold: 7
-
-⚠️ 3 security findings detected
-
-Fraim found 3 potential security issues. Please review the Security tab for details.
-
-📊 View detailed SARIF results
-
----
-Scan scope: Changed files only
-File patterns: *.py *.js *.ts
-
-🤖 Powered by Fraim | Documentation | Report an issue
-```
-
-## Troubleshooting
-
-### Common Issues
-
-1. **No API Key**: Make sure you've set up either `GEMINI_API_KEY` or `OPENAI_API_KEY` in your repository secrets.
-
-2. **Permission Denied**: Ensure your workflow has the required permissions (`security-events: write`).
-
-3. **Rate Limiting**: If you hit API rate limits, consider:
-   - Using a lower confidence threshold
-   - Scanning only changed files in PRs
-   - Adding delays between workflow runs
-
-## Security Considerations
-
-- API keys should be handled securely through GitHub Secrets
-- SARIF files may contain code snippets - review artifact retention policies
-- Consider using branch protection rules to require security scans to pass
-
-## Support
-
-- **Documentation**: [docs.fraim.dev](https://docs.fraim.dev)
-- **Issues**: Report bugs via GitHub Issues
-- **Community**: [Join the Slack community](https://join.slack.com/t/fraimworkspace/shared_invite/zt-38cunxtki-B80QAlLj7k8JoPaaYWUKNA)
-
-## License
-
-This action is provided under the MIT License. See the [LICENSE](./LICENSE) file for details. 
