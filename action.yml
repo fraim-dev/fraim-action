@@ -13,8 +13,8 @@ inputs:
 
   workflow_args:
     description: 'Workflow-specific arguments. See specific workflow docs for details.'
-    type: object
-    required: true
+    required: false
+    default: '{}'
   
   gemini-api-key:
     description: 'Google Gemini API key for AI analysis'
