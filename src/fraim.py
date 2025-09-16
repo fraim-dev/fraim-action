@@ -135,50 +135,6 @@ def main() -> None:
     print(f"Running: {' '.join(cmd)}")
     print(f"Working directory: {os.getcwd()}")
     
-    # Check environment variables
-    print("=== Environment Check ===")
-    api_keys = ['GEMINI_API_KEY', 'OPENAI_API_KEY', 'ANTHROPIC_API_KEY']
-    for key in api_keys:
-        value = os.environ.get(key, 'Not set')
-        print(f"{key}: {'[REDACTED]' if value != 'Not set' else 'Not set'}")
-    
-    github_vars = ['GITHUB_TOKEN', 'GH_TOKEN', 'GITHUB_REPOSITORY', 'INPUT_WORKFLOW']
-    for key in github_vars:
-        value = os.environ.get(key, 'Not set')
-        if key in ['GITHUB_TOKEN', 'GH_TOKEN']:
-            print(f"{key}: {'[REDACTED]' if value != 'Not set' else 'Not set'}")
-        else:
-            print(f"{key}: {value}")
-    print("=== End Environment Check ===")
-    
-    # Check if fraim is available and working
-    print("=== Debugging fraim command ===")
-    try:
-        fraim_check = subprocess.run(['uv', 'run', 'fraim', '--version'], 
-                                   capture_output=True, text=True, check=False, timeout=30)
-        print(f"Fraim version check exit code: {fraim_check.returncode}")
-        print(f"Fraim version stdout: {fraim_check.stdout}")
-        if fraim_check.stderr:
-            print(f"Fraim version stderr: {fraim_check.stderr}")
-    except subprocess.TimeoutExpired:
-        print("Fraim version check timed out")
-    except Exception as e:
-        print(f"Error checking fraim version: {e}")
-    
-    # Test a simple fraim command
-    print("Testing fraim help command...")
-    try:
-        help_result = subprocess.run(['uv', 'run', 'fraim', '--help'], 
-                                   capture_output=True, text=True, check=False, timeout=30)
-        print(f"Fraim help exit code: {help_result.returncode}")
-        if help_result.returncode != 0:
-            print(f"Fraim help stdout: {help_result.stdout}")
-            print(f"Fraim help stderr: {help_result.stderr}")
-    except Exception as e:
-        print(f"Error testing fraim help: {e}")
-    
-    print("=== End debugging ===")
-    
     try:
         # Use a temporary file to capture both stdout and stderr
         with tempfile.NamedTemporaryFile(mode='w+', delete=False) as temp_file:
