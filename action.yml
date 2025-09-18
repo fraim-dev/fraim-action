@@ -32,6 +32,14 @@ inputs:
     description: 'GitHub token for authentication (needed if you want to request reviewers)'
     required: false
 
+  github-app-id:
+    description: 'GitHub App ID for authentication (alternative to github-token)'
+    required: false
+
+  github-app-private-key:
+    description: 'GitHub App private key for authentication (alternative to github-token)'
+    required: false
+
   model:
     description: 'AI model to use for analysis'
     required: false
@@ -95,14 +103,22 @@ runs:
       run: |
         uv tool install fraim==v0.7.0
 
+    - name: Create GitHub App Token
+      id: github-app-token
+      if: ${{ inputs.github-app-id && inputs.github-app-private-key }}
+      uses: actions/create-github-app-token@67018539274d69449ef7c02e8e71183d1719ab42
+      with:
+        app-id: ${{ inputs.github-app-id }}
+        private-key: ${{ inputs.github-app-private-key }}
+
     - name: Run Fraim Security Scan
       id: fraim-scan
       shell: bash
       run: |
         uv run --script ${{ github.action_path }}/src/fraim.py
       env:
-        GITHUB_TOKEN: ${{ inputs.github-token || github.token }}
-        GH_TOKEN: ${{ inputs.github-token || github.token }}
+        GITHUB_TOKEN: ${{ steps.github-app-token.outputs.token || inputs.github-token || github.token }}
+        GH_TOKEN: ${{ steps.github-app-token.outputs.token || inputs.github-token || github.token }}
         GEMINI_API_KEY: ${{ inputs.gemini-api-key }}
         OPENAI_API_KEY: ${{ inputs.openai-api-key }}
         ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
