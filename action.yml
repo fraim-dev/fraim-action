@@ -90,10 +90,10 @@ runs:
         cd ${{ github.action_path }}
         uv sync
 
-    - name: Get Fraim v0.6.0
+    - name: Get Fraim v0.6.1
       shell: bash
       run: |
-        uv tool install fraim==v0.6.0
+        uv tool install fraim==v0.6.1
 
     - name: Run Fraim Security Scan
       id: fraim-scan
