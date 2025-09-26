@@ -135,13 +135,25 @@ def add_risk_flagger_args(args: Dict[str, str], workflow_cli_args: List[str], gi
     if approver:
         updated_args.extend(['--approver', approver])
     
+    # Add Slack webhook URL if provided in workflow args
+    slack_webhook_url = args.get('slack-webhook-url')
+    if slack_webhook_url:
+        updated_args.extend(['--slack-webhook-url', slack_webhook_url])
+        log(f"Adding Slack webhook URL for risk_flagger")
+    
+    # Add no-gh-comment flag if enabled in workflow args
+    no_gh_comment = args.get('no-gh-comment')
+    if no_gh_comment and str(no_gh_comment).lower() in ['true']:
+        updated_args.append('--no-gh-comment')
+        log(f"Adding --no-gh-comment flag for risk_flagger")
+
     # Add PR URL if this is a pull request event
     github_event_name = os.environ.get('GITHUB_EVENT_NAME', '')
     if github_event_name in ["pull_request", "pull_request_review"] and pr_number and github_repository:
         pr_url = f"https://github.com/{github_repository}/pull/{pr_number}"
         updated_args.extend(['--pr-url', pr_url])
         log(f"Adding PR URL for risk_flagger: {pr_url}")
-    
+
     return updated_args
 
 
