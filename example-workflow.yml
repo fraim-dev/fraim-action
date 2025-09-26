@@ -51,5 +51,7 @@ jobs:
               "custom_risk_list_filepath": "",
               "custom_risk_list_action": "merge",
               "approver": "security-team-lead",
-              "should_block_pull_request": "true"
+              "should_block_pull_request": "true",
+              "slack-webhook-url": "${{ secrets.SLACK_WEBHOOK_URL }}",
+              "no-gh-comment": "false"
             }
