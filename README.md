@@ -9,7 +9,7 @@ Fraim provides specialized AI-powered workflows for different types of security 
 
 Identifies code changes that require security team review and investigation. Integrates with Github and allows you to loop in a reviewer and block a PR until that reviewer approves.
 
-[Docs](https://docs.fraim.dev/workflows/risk_flagger#github-actions-integration)
+[Docs](https://docs.fraim.dev/workflows/risk_flagger#github-actions)
 
 ```bash
 name: Risk Assessment
@@ -79,7 +79,7 @@ jobs:
 
 Security analysis of infrastructure configuration files and deployment manifests.
 
-[Docs](https://docs.fraim.dev/workflows/iac#available-workflow-args)
+[Docs](https://docs.fraim.dev/workflows/iac#github-actions)
 
 ```bash
 name: IaC Security
