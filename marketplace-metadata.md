@@ -50,4 +50,4 @@ When publishing this action to the GitHub Actions Marketplace, use the following
 ```
 
 **Full Changelog**: https://github.com/fraim-dev/fraim-action/compare/v1.0.0...v1.1.0
-``` 
+ 
