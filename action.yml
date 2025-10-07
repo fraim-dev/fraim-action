@@ -157,20 +157,17 @@ runs:
     #     checkout_path: ${{ github.workspace }}
     #     ref: ${{ github.ref }}
     #     sha: ${{ github.sha }}
-    - uses: actions/setup-node@v5
-      with:
-        node-version: 18
     - name: Post SARIF findings in the pull request
-      if: github.event_name == 'pull_request'
-      uses: sett-and-hive/sarif-to-comment-action@91acbd13844b0bc28d06d8ea30a321bb5ce1c479
-      with:
-        token: ${{ github.token }}
-        repository: ${{ github.repository }}
-        branch: ${{ github.head_ref }}
-        pr-number: ${{ github.event.number }}
-        sarif-file: ${{ steps.fraim-scan.outputs.sarif-file }}
-        title: Fraim Security Alert
-        dry-run: false
+      if: github.event_name == 'pull_request' && steps.fraim-scan.outputs.sarif-file != ''
+      shell: bash
+      run: |
+        uv run --script ${{ github.action_path }}/src/sarif_to_comment.py \
+          --sarif-file "${{ steps.fraim-scan.outputs.sarif-file }}" \
+          --repository "${{ github.repository }}" \
+          --pr-number "${{ github.event.number }}" \
+          --title "Fraim Security Alert"
+      env:
+        GITHUB_TOKEN: ${{ steps.github-app-token.outputs.token || inputs.github-token || github.token }}
 
     - name: Upload SARIF as artifact
       if: steps.fraim-scan.outputs.sarif-file != ''
