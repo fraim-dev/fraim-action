@@ -55,6 +55,11 @@ def add_global_args(workflow: str, args: Dict[str, str], github_repository: str)
     confidence = args.get('confidence')
     if confidence:
         global_args.extend(['--confidence', confidence])
+        
+    # Add temperature if specified
+    temperature = args.get('temperature')
+    if temperature:
+        global_args.extend(['--temperature', temperature])
     
     # Add model if specified
     input_model = os.environ.get('INPUT_MODEL', '')
