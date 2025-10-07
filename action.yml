@@ -131,16 +131,46 @@ runs:
         GITHUB_REPOSITORY: ${{ github.repository }}
         GITHUB_EVENT_PATH: ${{ github.event_path }}
 
-    - name: Upload SARIF to GitHub Security
-      if: steps.fraim-scan.outputs.sarif-file != ''
-      uses: github/codeql-action/upload-sarif@v3
+    # - name: Check if GHAS is enabled
+    #   uses: actions/github-script@v7
+    #   id: ghas-enabled
+    #   with:
+    #     script: |
+    #       const response = await github.rest.repos.get({
+    #         owner: '${{ github.repository }}'.split("/")[0],
+    #         repo: '${{ github.repository }}'.split("/")[1]
+    #       });
+    #       const securityEnabled = response.data.security_and_analysis?.advanced_security?.status === 'enabled';
+
+    #       if (!securityEnabled) {
+    #         const message = 'GitHub Advanced Security is NOT enabled.';
+    #         core.warning(message);
+    #       }
+    #       return securityEnabled;
+    # - name: Upload SARIF to GitHub Security
+    #   if: steps.fraim-scan.outputs.sarif-file != ''
+    #   uses: github/codeql-action/upload-sarif@v3
+    #   with:
+    #     sarif_file: ${{ steps.fraim-scan.outputs.sarif-file }}
+    #     category: fraim-security-scan
+    #     # Ensure proper PR annotations by specifying the commit SHA
+    #     checkout_path: ${{ github.workspace }}
+    #     ref: ${{ github.ref }}
+    #     sha: ${{ github.sha }}
+    - uses: actions/setup-node@v5
       with:
-        sarif_file: ${{ steps.fraim-scan.outputs.sarif-file }}
-        category: fraim-security-scan
-        # Ensure proper PR annotations by specifying the commit SHA
-        checkout_path: ${{ github.workspace }}
-        ref: ${{ github.ref }}
-        sha: ${{ github.sha }}
+        node-version: 18
+    - name: Post SARIF findings in the pull request
+      if: github.event_name == 'pull_request'
+      uses: sett-and-hive/sarif-to-comment-action@91acbd13844b0bc28d06d8ea30a321bb5ce1c479
+      with:
+        token: ${{ github.token }}
+        repository: ${{ github.repository }}
+        branch: ${{ github.head_ref }}
+        pr-number: ${{ github.event.number }}
+        sarif-file: ${{ steps.fraim-scan.outputs.sarif-file }}
+        title: Fraim Security Alert
+        dry-run: false
 
     - name: Upload SARIF as artifact
       if: steps.fraim-scan.outputs.sarif-file != ''
