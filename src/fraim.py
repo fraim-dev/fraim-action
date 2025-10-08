@@ -17,7 +17,7 @@ import glob
 from pathlib import Path
 from typing import Optional, Dict, Any, Tuple, Union
 
-from workflows import add_global_args, add_risk_flagger_args, handle_pull_request_review, handle_pull_request_block, check_output_for_risk_findings
+from workflows import add_global_args, add_custom_args, handle_pull_request_review, handle_pull_request_block, check_output_for_risk_findings
 
 def log(message: str) -> None:
     """Log messages in GitHub Actions debug format."""
@@ -122,9 +122,8 @@ def main() -> None:
     global_args = add_global_args(workflow, args, github_repository)
     workflow_cli_args = []
     
-    # Add risk_flagger specific arguments
-    if workflow == "risk_flagger":
-        workflow_cli_args = add_risk_flagger_args(args, workflow_cli_args, github_repository, pr_number)
+    # Add custom specific arguments
+    workflow_cli_args = add_custom_args(args, workflow_cli_args, github_repository, pr_number)
     
     # Run the single workflow
     print(f"Running workflow: {workflow}")

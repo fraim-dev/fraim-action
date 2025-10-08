@@ -103,8 +103,8 @@ def add_global_args(workflow: str, args: Dict[str, str], github_repository: str)
     return global_args
 
 
-def add_risk_flagger_args(args: Dict[str, str], workflow_cli_args: List[str], github_repository: str, pr_number: Optional[int]) -> List[str]:
-    """Add risk_flagger specific arguments to workflow CLI args.
+def add_custom_args(args: Dict[str, str], workflow_cli_args: List[str], github_repository: str, pr_number: Optional[int]) -> List[str]:
+    """Add custom specific arguments to workflow CLI args.
     
     Args:
         args: Dictionary of parsed workflow arguments
@@ -160,7 +160,6 @@ def add_risk_flagger_args(args: Dict[str, str], workflow_cli_args: List[str], gi
         log(f"Adding PR URL for risk_flagger: {pr_url}")
 
     return updated_args
-
 
 def get_team_members(github_repository: str, team_name: str) -> List[str]:
     """Get members of a GitHub team.
