@@ -98,10 +98,10 @@ runs:
         cd ${{ github.action_path }}
         uv sync
 
-    - name: Get Fraim v0.7.1.dev2
+    - name: Get Fraim v0.7.1.dev3
       shell: bash
       run: |
-        uv tool install fraim==v0.7.1.dev2
+        uv tool install fraim==v0.7.1.dev3
 
     - name: Create GitHub App Token
       id: github-app-token
