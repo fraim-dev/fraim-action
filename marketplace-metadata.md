@@ -50,4 +50,20 @@ When publishing this action to the GitHub Actions Marketplace, use the following
 ```
 
 **Full Changelog**: https://github.com/fraim-dev/fraim-action/compare/v1.0.0...v1.1.0
+````markdown
+## What's Changed
+- Feature/fix descriptions
+- Breaking changes (if any)
+- New configuration options
+
+## Usage
+```yaml
+- uses: fraim-dev/fraim-action@v1
+with:
+gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
+```
+
+**Full Changelog**: https://github.com/fraim-dev/fraim-action/compare/v1.0.0...v1.1.0
  
+````
+
