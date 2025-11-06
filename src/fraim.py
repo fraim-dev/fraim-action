@@ -130,7 +130,7 @@ def main() -> None:
     print(f"Running workflow: {workflow}")
 
     # Build the complete command: uv run fraim run [workflow] [global_args] [workflow_args]
-    cmd = ['uvx', 'fraim==v0.7.0', 'run', workflow] + global_args + workflow_cli_args
+    cmd = ['uvx', 'fraim==v0.8.0', 'run', workflow] + global_args + workflow_cli_args
 
     print(f"Running: {' '.join(cmd)}")
     print(f"Working directory: {os.getcwd()}")
